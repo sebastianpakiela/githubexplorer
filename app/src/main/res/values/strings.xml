@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">GithubExplorer</string>
+    <string name="action_settings">Settings</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="search_fragment_label">Github Explorer</string>
+    <string name="details_fragment_label">Repository Details</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+
+    <string name="hello_first_fragment">Hello first fragment</string>
+    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+
+    <string name="explore_repo_text">Explore!</string>
+    <string name="search_hint">Please use user/repo format</string>
+
+    <string name="user_repo_validation_empty">Could not be empty :(</string>
+    <string name="user_repo_validation_no_slash_present">You are missing slash character</string>
+    <string name="user_repo_validation_one_slash_only_permitted">Only one slash permitted</string>
+    <string name="user_repo_validation_no_user_name_found">I could not see user name here</string>
+    <string name="user_repo_validation_no_repo_name_found">I could not see repo name here</string>
+    <string name="user_repo_validation_correct"></string>
+
+    <string name="item_author_and_date">%1$s commited on %2$s</string>
+    <string name="recently_viewed_header">You recently viewed following repos:</string>
+
+    <string name="get_repo_error">Error finding your repository. Check name and try again.</string>
+</resources>

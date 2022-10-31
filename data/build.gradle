@@ -1,0 +1,82 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
+}
+
+android {
+    namespace 'com.sebastianpakiela.githubexplorer.data'
+    compileSdk rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += [
+                        "room.schemaLocation":"$projectDir/schemas".toString(),
+                        "room.incremental":"true",
+                        "room.expandProjection":"true"]
+            }
+        }
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    implementation project(":domain")
+
+    implementation "io.reactivex.rxjava3:rxjava:3.1.5"
+    implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
+    implementation 'androidx.lifecycle:lifecycle-livedata-core:2.4.1'
+    api "com.github.akarnokd:rxjava3-retrofit-adapter:3.0.0"
+    api 'com.squareup.retrofit2:retrofit:2.7.1'
+    api  'com.squareup.retrofit2:converter-gson:2.9.0'
+    api 'com.google.code.gson:gson:2.10'
+
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.2.1'
+    implementation 'com.google.dagger:dagger:2.44'
+
+    kapt 'com.google.dagger:dagger-compiler:2.44'
+    kapt "androidx.room:room-compiler:2.4.3"
+
+    implementation "androidx.room:room-rxjava3:2.4.3"
+    implementation "androidx.room:room-runtime:2.4.3"
+    annotationProcessor "androidx.room:room-compiler:2.4.3"
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation "androidx.test:runner:1.4.0"
+    testImplementation 'androidx.test:core:1.4.0'
+    testImplementation 'androidx.test:rules:1.4.0'
+    testImplementation 'androidx.test.ext:junit-ktx:1.1.3'
+    testImplementation "androidx.room:room-testing:2.4.3"
+    testImplementation 'org.robolectric:robolectric:4.8'
+    testImplementation 'androidx.arch.core:core-testing:2.1.0'
+    testImplementation 'androidx.test.ext:junit:1.1.3'
+    testImplementation 'org.mockito:mockito-core:4.8.1'
+    testImplementation 'org.hamcrest:hamcrest:2.1'
+    testImplementation "org.mockito.kotlin:mockito-kotlin:4.0.0"
+}

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/SearchFragment">
+
+    <fragment
+        android:id="@+id/SearchFragment"
+        android:name="com.sebastianpakiela.githubexplorer.feature.search.SearchFragment"
+        android:label="@string/search_fragment_label"
+        tools:layout="@layout/fragment_search">
+
+        <action
+            android:id="@+id/action_search_to_details"
+            app:destination="@id/DetailsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/DetailsFragment"
+        android:name="com.sebastianpakiela.githubexplorer.feature.details.DetailsFragment"
+        android:label="@string/details_fragment_label"
+        tools:layout="@layout/fragment_details">
+
+        <argument
+            android:name="commitList"
+            android:defaultValue="@null"
+            app:nullable="true"
+            app:argType="com.sebastianpakiela.githubexplorer.domain.entity.RepoCommitList" />
+    </fragment>
+</navigation>
