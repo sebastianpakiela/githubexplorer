@@ -10,11 +10,12 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.snackbar.Snackbar
-import com.sebastianpakiela.githubexplorer.base.BaseFragment
 import com.sebastianpakiela.githubexplorer.R
+import com.sebastianpakiela.githubexplorer.base.BaseFragment
 import com.sebastianpakiela.githubexplorer.databinding.FragmentSearchBinding
 import com.sebastianpakiela.githubexplorer.di.ViewModelFactory
 import com.sebastianpakiela.githubexplorer.domain.usecase.UserAndRepoValidationStatus
+import com.sebastianpakiela.githubexplorer.extension.collectWhileStarted
 import com.sebastianpakiela.githubexplorer.feature.search.recentlyviewed.RecentlyViewedReposAdapter
 import javax.inject.Inject
 
@@ -57,29 +58,30 @@ class SearchFragment : BaseFragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.loading.observe { binding.progressIndicator.isVisible = it ?: false }
-        viewModel.error.observe {
+        viewModel.errorFlow.collectWhileStarted(viewLifecycleOwner) {
             binding.searchInputLayout.error = getString(it.toStringResourceMessage())
         }
-        viewModel.goToDetailsEvent.observe {
+
+        viewModel.loadingFlow.collectWhileStarted(viewLifecycleOwner) {
+            binding.progressIndicator.isVisible = it
+        }
+
+        viewModel.goToDetailsFlow.collectWhileStarted(viewLifecycleOwner) {
             findNavController().navigate(SearchFragmentDirections.actionSearchToDetails(it))
         }
-        viewModel.recentlyViewedRepositories.observe {
-            if (it.isNullOrEmpty()) {
-                binding.recentlyViewedGroup.isVisible = false
-            } else {
-                binding.recentlyViewedGroup.isVisible = true
-                recentlyViewedReposAdapter.submitList(it)
-            }
-        }
-        viewModel.errorSnackBarEvent.observe {
+
+        viewModel.goToErrorSnackBarFlow.collectWhileStarted(viewLifecycleOwner) {
             Snackbar.make(binding.root, R.string.get_repo_error, Snackbar.LENGTH_SHORT).show()
+        }
+
+        viewModel.recentlyViewedRepositoriesFlow.collectWhileStarted(viewLifecycleOwner) {
+            binding.recentlyViewedGroup.isVisible = it.isNotEmpty()
+            recentlyViewedReposAdapter.submitList(it)
         }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        viewModel.clear()
         _binding = null
     }
 }

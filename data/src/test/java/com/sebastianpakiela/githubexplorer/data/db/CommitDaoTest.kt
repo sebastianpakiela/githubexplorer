@@ -53,7 +53,7 @@ class CommitDaoTest {
 
 
     @Test
-    fun `Should  return inserted data by key`() {
+    fun `Should return inserted data by key`() {
         commitDao.putCommits(listOf(TestData.commitEntity)).subscribeOn(Schedulers.trampoline())
             .observeOn(Schedulers.trampoline()).test()
 

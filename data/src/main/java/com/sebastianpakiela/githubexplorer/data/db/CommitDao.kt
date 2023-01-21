@@ -5,19 +5,17 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import com.sebastianpakiela.githubexplorer.data.entity.db.CommitEntity
-import io.reactivex.rxjava3.core.Completable
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.core.Single
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CommitDao {
 
     @Query("SELECT * FROM commit_table ORDER BY date ASC")
-    fun getAll(): Observable<List<CommitEntity>>
+    fun getAll(): Flow<List<CommitEntity>>
 
     @Query("SELECT * FROM commit_table WHERE repoAndUserKey = :input ORDER BY date ASC")
-    fun get(input: String): Single<List<CommitEntity>>
+    fun get(input: String): Flow<List<CommitEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun putCommits(recentlyViewedRepositoryEntity: List<CommitEntity>): Completable
+    fun putCommits(recentlyViewedRepositoryEntity: List<CommitEntity>)
 }

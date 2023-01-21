@@ -39,7 +39,6 @@ class InternalDataModule {
     @Singleton
     fun providesRetrofit(
         converterFactory: Converter.Factory,
-        callAdapter: CallAdapter.Factory
     ): Retrofit {
         val logging =
             HttpLoggingInterceptor().apply { this.level = HttpLoggingInterceptor.Level.BASIC }
@@ -52,7 +51,6 @@ class InternalDataModule {
             .baseUrl("https://api.github.com")
             .addConverterFactory(converterFactory)
             .client(okHttpClient)
-            .addCallAdapterFactory(callAdapter)
             .build()
     }
 
@@ -67,11 +65,6 @@ class InternalDataModule {
         return GsonBuilder().registerTypeAdapter(
             Instant::class.java, InstantDateDeserializer()
         ).create()
-    }
-
-    @Provides
-    fun provideCallAdapterFactory(): CallAdapter.Factory {
-        return RxJava3CallAdapterFactory.create()
     }
 
     @Provides

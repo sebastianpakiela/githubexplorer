@@ -2,14 +2,14 @@ package com.sebastianpakiela.githubexplorer.data.repository
 
 import com.sebastianpakiela.githubexplorer.data.api.NetworkApiService
 import com.sebastianpakiela.githubexplorer.data.db.CommitDao
-import com.sebastianpakiela.githubexplorer.data.entity.db.CommitEntity
 import com.sebastianpakiela.githubexplorer.data.db.RecentlyViewedRepositoryDao
-import com.sebastianpakiela.githubexplorer.data.entity.db.RecentlyViewedRepositoryEntity
 import com.sebastianpakiela.githubexplorer.data.entity.DATE_FORMAT_PATTERN
+import com.sebastianpakiela.githubexplorer.data.entity.db.CommitEntity
+import com.sebastianpakiela.githubexplorer.data.entity.db.RecentlyViewedRepositoryEntity
 import com.sebastianpakiela.githubexplorer.domain.entity.RepoCommitList
 import com.sebastianpakiela.githubexplorer.domain.repository.GithubRepository
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.core.Single
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.ZoneId
@@ -28,48 +28,43 @@ class GithubRepositoryImpl @Inject constructor(
     private val dateFormatter =
         DateTimeFormatter.ofPattern(DATE_FORMAT_PATTERN).withZone(ZoneId.systemDefault())
 
-    override fun getRepo(userAndRepo: String): Single<RepoCommitList> {
-        return apiService
-            .getRepositoryData(userAndRepo)
-            .flatMap { getCommitsData(userAndRepo) }
-            .onErrorResumeNext { originalError ->
-                fallbackToDbCacheCommitData(originalError, userAndRepo)
-            }
-    }
+    override fun getRepo(userAndRepo: String): Flow<RepoCommitList> {
+        return flow {
+            val repoData = apiService.getRepositoryData(userAndRepo)
+            val commitData = apiService.getCommitData(userAndRepo)
 
-    private fun getCommitsData(userAndRepo: String): Single<RepoCommitList> {
-        return apiService
-            .getCommitData(userAndRepo)
-            .map { commitEntryList ->
-                RepoCommitList(list = commitEntryList.map { it.toDomain(dateFormatter) })
-            }
-            .flatMap { result ->
-                val entities = result.list.map { commit ->
-                    CommitEntity.fromDomain(commit, userAndRepo)
-                }
+            val totalData = RepoCommitList(list = commitData.map { it.toDomain(dateFormatter) })
 
-                commitDao.putCommits(entities).toSingleDefault(result)
+            emit(totalData)
+
+            commitDao.putCommits(totalData.list.map { CommitEntity.fromDomain(it, userAndRepo) })
+            repositoryDao.putRepository(
+                RecentlyViewedRepositoryEntity(
+                    userAndRepo,
+                    timestampProvider.get()
+                )
+            )
+        }.catch {
+            if (it is SocketTimeoutException || it is UnknownHostException) {
+                emitAll(fallbackToDbCacheCommitData(it, userAndRepo))
+            } else {
+                throw it
             }
-            .flatMap {
-                repositoryDao.putRepository(
-                    RecentlyViewedRepositoryEntity(userAndRepo, timestampProvider.get())
-                ).toSingleDefault(it)
-            }
+        }.flowOn(Dispatchers.IO)
     }
 
     private fun fallbackToDbCacheCommitData(
-        originalError: Throwable?,
+        originalError: Throwable,
         userAndRepo: String
-    ) = if (originalError is SocketTimeoutException || originalError is UnknownHostException) {
-        commitDao
-            .get(userAndRepo)
-            .map { it.map { it.toDomain() } }
-            .map { RepoCommitList(it) }
-    } else {
-        Single.error(originalError)
+    ): Flow<RepoCommitList> {
+        return if (originalError is SocketTimeoutException || originalError is UnknownHostException) {
+            commitDao.get(userAndRepo).map { it.map { it.toDomain() } }.map { RepoCommitList(it) }
+        } else {
+            throw originalError
+        }
     }
 
-    override fun getRecentlyViewedRepositories(): Observable<List<String>> {
+    override fun getRecentlyViewedRepositories(): Flow<List<String>> {
         return repositoryDao.getAll().map { entry -> entry.map { it.userAndRepoKey } }
     }
 }

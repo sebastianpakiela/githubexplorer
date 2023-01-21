@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.sebastianpakiela.githubexplorer.base.BaseFragment
 import com.sebastianpakiela.githubexplorer.databinding.FragmentDetailsBinding
 import com.sebastianpakiela.githubexplorer.di.ViewModelFactory
+import com.sebastianpakiela.githubexplorer.extension.collectWhileStarted
 import javax.inject.Inject
 
 class DetailsFragment : BaseFragment() {
@@ -57,21 +58,22 @@ class DetailsFragment : BaseFragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.commitList.observe { adapter.submitList(it) }
-        viewModel.shareCommitEvent.observe {
+        viewModel.commitListFlow.collectWhileStarted(viewLifecycleOwner) {
+            adapter.submitList(it)
+        }
+
+        viewModel.shareCommitEventFlow.collectWhileStarted(viewLifecycleOwner) {
             val intent = Intent().apply {
                 action = Intent.ACTION_SEND
                 putExtra(Intent.EXTRA_TEXT, it)
                 type = "text/plain"
             }
-            val shareIntent = Intent.createChooser(intent, null)
-            startActivity(shareIntent)
+            Intent.createChooser(intent, null).apply { startActivity(this) }
         }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        viewModel.clear()
         _binding = null
     }
 }

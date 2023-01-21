@@ -49,11 +49,7 @@ android {
 dependencies {
     implementation project(":domain")
 
-    implementation "io.reactivex.rxjava3:rxjava:3.1.5"
-    implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
-    implementation 'androidx.lifecycle:lifecycle-livedata-core:2.4.1'
-    api "com.github.akarnokd:rxjava3-retrofit-adapter:3.0.0"
-    api 'com.squareup.retrofit2:retrofit:2.7.1'
+    api 'com.squareup.retrofit2:retrofit:2.9.0'
     api  'com.squareup.retrofit2:converter-gson:2.9.0'
     api 'com.google.code.gson:gson:2.10'
 
@@ -61,11 +57,10 @@ dependencies {
     implementation 'com.google.dagger:dagger:2.44'
 
     kapt 'com.google.dagger:dagger-compiler:2.44'
-    kapt "androidx.room:room-compiler:2.4.3"
+    kapt "androidx.room:room-compiler:2.5.0"
 
-    implementation "androidx.room:room-rxjava3:2.4.3"
-    implementation "androidx.room:room-runtime:2.4.3"
-    annotationProcessor "androidx.room:room-compiler:2.4.3"
+    implementation "androidx.room:room-runtime:2.5.0"
+    implementation "androidx.room:room-ktx:2.5.0"
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation "androidx.test:runner:1.4.0"
@@ -79,4 +74,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:4.8.1'
     testImplementation 'org.hamcrest:hamcrest:2.1'
     testImplementation "org.mockito.kotlin:mockito-kotlin:4.0.0"
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
 }

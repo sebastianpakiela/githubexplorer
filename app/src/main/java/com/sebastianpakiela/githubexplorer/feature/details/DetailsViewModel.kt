@@ -1,47 +1,37 @@
 package com.sebastianpakiela.githubexplorer.feature.details
 
-import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.sebastianpakiela.githubexplorer.base.SingleLiveEvent
+import androidx.lifecycle.viewModelScope
 import com.sebastianpakiela.githubexplorer.domain.entity.Commit
 import com.sebastianpakiela.githubexplorer.domain.entity.RepoCommitList
 import com.sebastianpakiela.githubexplorer.domain.usecase.CommitToShareTextUseCase
-import com.sebastianpakiela.githubexplorer.extension.applyComputationsSchedulers
-import io.reactivex.rxjava3.disposables.CompositeDisposable
-import io.reactivex.rxjava3.kotlin.addTo
-import io.reactivex.rxjava3.kotlin.subscribeBy
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class DetailsViewModel @Inject constructor(
     private val commitToShareTextUseCase: CommitToShareTextUseCase
 ) : ViewModel() {
 
-    private val disposable: CompositeDisposable = CompositeDisposable()
+    private val _commitListFlow = MutableStateFlow<List<Commit>>(emptyList())
+    val commitListFlow: StateFlow<List<Commit>> = _commitListFlow
 
-    private val commitListLiveData = MutableLiveData<List<Commit>>()
-    val commitList: LiveData<List<Commit>>
-        get() = commitListLiveData
-
-    val shareCommitEvent = SingleLiveEvent<String>()
+    private val shareCommitChannel: Channel<String> = Channel(Channel.BUFFERED)
+    val shareCommitEventFlow = shareCommitChannel.receiveAsFlow()
 
     fun initFrom(repoCommitList: RepoCommitList) {
-        commitListLiveData.value = repoCommitList.list
+        viewModelScope.launch {
+            _commitListFlow.emit(repoCommitList.list)
+        }
     }
 
     fun onShareClick(commit: Commit) {
-        commitToShareTextUseCase
-            .execute(commit)
-            .applyComputationsSchedulers()
-            .subscribeBy(
-                onError = { Log.e("Error", "Error") },
-                onSuccess = { shareCommitEvent.value = it }
-            )
-            .addTo(disposable)
-    }
-
-    fun clear() {
-        disposable.clear()
+        viewModelScope.launch {
+            val text = commitToShareTextUseCase.execute(commit)
+            shareCommitChannel.send(text)
+        }
     }
 }

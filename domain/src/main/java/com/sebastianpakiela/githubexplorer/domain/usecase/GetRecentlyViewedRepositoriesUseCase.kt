@@ -1,12 +1,12 @@
 package com.sebastianpakiela.githubexplorer.domain.usecase
 
 import com.sebastianpakiela.githubexplorer.domain.repository.GithubRepository
-import io.reactivex.rxjava3.core.Observable
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class GetRecentlyViewedRepositoriesUseCase @Inject constructor(private val repository: GithubRepository) {
 
-    fun getRecentlyViewedRepositories(): Observable<List<String>> {
+    fun getRecentlyViewedRepositories(): Flow<List<String>> {
         return repository.getRecentlyViewedRepositories()
     }
 }
