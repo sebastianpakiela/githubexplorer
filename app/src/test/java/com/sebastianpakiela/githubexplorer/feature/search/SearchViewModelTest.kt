@@ -1,29 +1,30 @@
 package com.sebastianpakiela.githubexplorer.feature.search
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.lifecycle.Observer
 import com.sebastianpakiela.githubexplorer.domain.entity.RepoCommitList
 import com.sebastianpakiela.githubexplorer.domain.usecase.GetRecentlyViewedRepositoriesUseCase
 import com.sebastianpakiela.githubexplorer.domain.usecase.GetRepositoryDataUseCase
 import com.sebastianpakiela.githubexplorer.domain.usecase.UserAndRepoValidationStatus
 import com.sebastianpakiela.githubexplorer.domain.usecase.ValidateRepositoryAndUserUseCase
-import com.sebastianpakiela.githubexplorer.rule.RxImmediateSchedulerRule
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.core.Single
+import com.sebastianpakiela.githubexplorer.rule.TestCoroutineRule
+import com.sebastianpakiela.githubexplorer.rule.testCollect
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.*
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
 
-    @Rule
-    @JvmField
-    var testSchedulerRule = RxImmediateSchedulerRule()
+    @get:Rule
+    val testSchedulerRule = TestCoroutineRule()
 
-    @Rule
-    @JvmField
-    var instantTaskExecutorRule = InstantTaskExecutorRule()
+    @get:Rule
+    val instantTaskExecutorRule = InstantTaskExecutorRule()
 
     private val getRecentlyViewedRepositoriesUseCase: GetRecentlyViewedRepositoriesUseCase = mock()
     private val getRepositoryDataUseCase: GetRepositoryDataUseCase = mock()
@@ -35,7 +36,7 @@ class SearchViewModelTest {
     fun setup() {
         whenever(
             getRecentlyViewedRepositoriesUseCase.getRecentlyViewedRepositories()
-        ).thenReturn(Observable.just(emptyList()))
+        ).thenReturn(flow { emptyList<String>() })
 
         viewModel = SearchViewModel(
             getRecentlyViewedRepositoriesUseCase,
@@ -45,64 +46,71 @@ class SearchViewModelTest {
     }
 
     @Test
-    fun `Should query recently viewed list on init`() {
-        val observer: Observer<List<String>> = mock()
-        viewModel.recentlyViewedRepositories.observeForever(observer)
+    fun `Should query recently viewed list on init`() = runTest {
+        val collector: FlowCollector<List<String>> = mock()
+        viewModel.recentlyViewedRepositoriesFlow.testCollect(testScheduler, collector)
 
-        verify(observer).onChanged(emptyList())
+        verify(collector).emit(emptyList())
+        verifyNoMoreInteractions(collector)
     }
 
     @Test
-    fun `Should not query repo on wrong input`() {
+    fun `Should not query repo on wrong input`() = runTest {
         val input = "input"
-        whenever(validateRepositoryAndUserUseCase.validateRepositoryAndUserInput(input)).thenReturn(
-            Single.just(UserAndRepoValidationStatus.NO_SLASH_PRESENT)
-        )
-        val loadingObserver: Observer<Boolean> = mock()
-        val errorObserver: Observer<UserAndRepoValidationStatus> = mock()
-        val snackbarObserver: Observer<Unit> = mock()
-        val repoCommitList: Observer<RepoCommitList> = mock()
-        viewModel.loading.observeForever(loadingObserver)
-        viewModel.error.observeForever(errorObserver)
-        viewModel.errorSnackBarEvent.observeForever(snackbarObserver)
-        viewModel.goToDetailsEvent.observeForever(repoCommitList)
+        whenever(
+            validateRepositoryAndUserUseCase.validateRepositoryAndUserInput(input)
+        ).thenReturn(UserAndRepoValidationStatus.NO_SLASH_PRESENT)
+
+        val loadingCollector: FlowCollector<Boolean> = mock()
+        val errorCollector: FlowCollector<UserAndRepoValidationStatus> = mock()
+        val snackbarCollector: FlowCollector<Unit> = mock()
+        val repoCommitListCollector: FlowCollector<RepoCommitList> = mock()
+
+        viewModel.loadingFlow.testCollect(testScheduler, loadingCollector)
+        viewModel.errorFlow.testCollect(testScheduler, errorCollector)
+        viewModel.goToErrorSnackBarFlow.testCollect(testScheduler, snackbarCollector)
+        viewModel.goToDetailsFlow.testCollect(testScheduler, repoCommitListCollector)
 
         viewModel.queryRepository(input)
 
-        verify(loadingObserver).onChanged(true)
-        verify(loadingObserver).onChanged(false)
-        verify(errorObserver).onChanged(UserAndRepoValidationStatus.NO_SLASH_PRESENT)
-        verify(snackbarObserver, never()).onChanged(any())
-        verify(repoCommitList, never()).onChanged(any())
+        advanceUntilIdle()
+
+        verify(loadingCollector).emit(false)
+        verify(errorCollector).emit(UserAndRepoValidationStatus.NO_SLASH_PRESENT)
+        verify(snackbarCollector, never()).emit(any())
+        verify(repoCommitListCollector, never()).emit(any())
         verify(getRepositoryDataUseCase, never()).getRepository(input)
     }
 
     @Test
-    fun `Should query repo on correct input`() {
+    fun `Should query repo on correct input`() = runTest {
         val input = "input"
         val repoCommitList = RepoCommitList(emptyList())
 
-        whenever(validateRepositoryAndUserUseCase.validateRepositoryAndUserInput(input)).thenReturn(
-            Single.just(UserAndRepoValidationStatus.CORRECT)
-        )
-        whenever(getRepositoryDataUseCase.getRepository(input)).thenReturn(
-            Single.just(repoCommitList)
-        )
-        val loadingObserver: Observer<Boolean> = mock()
-        val errorObserver: Observer<UserAndRepoValidationStatus> = mock()
-        val snackbarObserver: Observer<Unit> = mock()
-        val repoCommitListObserver: Observer<RepoCommitList> = mock()
-        viewModel.loading.observeForever(loadingObserver)
-        viewModel.error.observeForever(errorObserver)
-        viewModel.errorSnackBarEvent.observeForever(snackbarObserver)
-        viewModel.goToDetailsEvent.observeForever(repoCommitListObserver)
+        whenever(
+            validateRepositoryAndUserUseCase.validateRepositoryAndUserInput(input)
+        ).thenReturn(UserAndRepoValidationStatus.CORRECT)
+        whenever(
+            getRepositoryDataUseCase.getRepository(input)
+        ).thenReturn(flowOf(repoCommitList))
+
+        val loadingCollector: FlowCollector<Boolean> = mock()
+        val errorCollector: FlowCollector<UserAndRepoValidationStatus> = mock()
+        val snackbarCollector: FlowCollector<Unit> = mock()
+        val repoCommitListCollector: FlowCollector<RepoCommitList> = mock()
+        viewModel.loadingFlow.testCollect(testScheduler, loadingCollector)
+        viewModel.errorFlow.testCollect(testScheduler, errorCollector)
+        viewModel.goToErrorSnackBarFlow.testCollect(testScheduler, snackbarCollector)
+        viewModel.goToDetailsFlow.testCollect(testScheduler, repoCommitListCollector)
 
         viewModel.queryRepository(input)
 
-        verify(loadingObserver).onChanged(true)
-        verify(loadingObserver).onChanged(false)
-        verify(errorObserver).onChanged(UserAndRepoValidationStatus.CORRECT)
-        verify(snackbarObserver, never()).onChanged(any())
-        verify(repoCommitListObserver).onChanged(repoCommitList)
+        advanceUntilIdle()
+
+        verify(loadingCollector).emit(true)
+        verify(loadingCollector, times(2)).emit(false)
+        verify(errorCollector).emit(UserAndRepoValidationStatus.CORRECT)
+        verify(snackbarCollector, never()).emit(any())
+        verify(repoCommitListCollector).emit(repoCommitList)
     }
 }

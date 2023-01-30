@@ -4,31 +4,33 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.*
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sebastianpakiela.githubexplorer.data.entity.db.RecentlyViewedRepositoryEntity
-import com.sebastianpakiela.githubexplorer.data.rule.RxImmediateSchedulerRule
+import com.sebastianpakiela.githubexplorer.data.rule.TestCoroutineRule
+import com.sebastianpakiela.githubexplorer.data.rule.testCollect
 import com.sebastianpakiela.githubexplorer.data.testdata.TestData
-import io.reactivex.rxjava3.core.Completable
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.schedulers.Schedulers
-import org.hamcrest.CoreMatchers
-import org.hamcrest.MatcherAssert
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoMoreInteractions
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.IOException
 
-
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [32])
 class RecentlyViewedGithubRepositoryDaoTest {
 
-    @Rule
-    @JvmField
-    var testSchedulerRule = RxImmediateSchedulerRule()
+    @get:Rule
+    val testSchedulerRule = TestCoroutineRule()
 
-    @Rule
-    @JvmField
+    @get:Rule
     var instantTaskExecutorRule = InstantTaskExecutorRule()
 
     lateinit var db: AppDatabase
@@ -46,17 +48,14 @@ class RecentlyViewedGithubRepositoryDaoTest {
     }
 
     @Test
-    fun `Should  return inserted data`() {
-        recentlyViewedRepositoriesDao.putRepository((TestData.repoEntity)).test()
+    fun `Should  return inserted data`() = runTest {
+        recentlyViewedRepositoriesDao.putRepository((TestData.repoEntity))
 
-        val testObserver = recentlyViewedRepositoriesDao.getAll().test()
+        val rvrEntityCollector: FlowCollector<List<RecentlyViewedRepositoryEntity>> = mock()
+        recentlyViewedRepositoriesDao.getAll().testCollect(testScheduler, rvrEntityCollector)
 
-        testObserver.assertValueCount(1)
-        MatcherAssert.assertThat(testObserver.values().first().size, CoreMatchers.equalTo(1))
-        MatcherAssert.assertThat(
-            testObserver.values().first(),
-            CoreMatchers.equalTo(listOf(TestData.repoEntity))
-        )
+        verify(rvrEntityCollector).emit(listOf(TestData.repoEntity))
+        verifyNoMoreInteractions(rvrEntityCollector)
     }
 
     @After

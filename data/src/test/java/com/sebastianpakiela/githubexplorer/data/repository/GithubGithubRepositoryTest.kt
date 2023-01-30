@@ -3,23 +3,22 @@ package com.sebastianpakiela.githubexplorer.data.repository
 import com.sebastianpakiela.githubexplorer.data.api.NetworkApiService
 import com.sebastianpakiela.githubexplorer.data.db.CommitDao
 import com.sebastianpakiela.githubexplorer.data.db.RecentlyViewedRepositoryDao
-import com.sebastianpakiela.githubexplorer.data.rule.RxImmediateSchedulerRule
+import com.sebastianpakiela.githubexplorer.data.rule.TestCoroutineRule
 import com.sebastianpakiela.githubexplorer.data.testdata.TestData
-import io.reactivex.rxjava3.core.Observable
-import org.hamcrest.CoreMatchers.equalTo
-import org.hamcrest.MatcherAssert.assertThat
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import javax.inject.Provider
 
 class GithubGithubRepositoryTest {
 
-    @Rule
-    @JvmField
-    var testSchedulerRule = RxImmediateSchedulerRule()
+    @get:Rule
+    val testSchedulerRule = TestCoroutineRule()
 
     private val apiService: NetworkApiService = mock()
     private val repositoryDao: RecentlyViewedRepositoryDao = mock()
@@ -36,14 +35,13 @@ class GithubGithubRepositoryTest {
     }
 
     @Test
-    fun `Should return recently viewed repositories`() {
-        whenever(repositoryDao.getAll()).thenReturn(Observable.just(TestData.repoEntityList))
+    fun `Should return recently viewed repositories`() = runTest {
+        whenever(repositoryDao.getAll()).thenReturn(flowOf(TestData.repoEntityList))
+        val recentRepoCollector: FlowCollector<List<String>> = mock()
 
-        val observer = repository.getRecentlyViewedRepositories().test()
+        repository.getRecentlyViewedRepositories().collect(recentRepoCollector)
 
-        val receivedValues = observer.values()
-        assertThat(receivedValues.size, equalTo(1))
-        assertThat(receivedValues.first(), equalTo(TestData.repoList))
+        verify(recentRepoCollector).emit(TestData.repoList)
     }
 }
 

@@ -1,12 +1,16 @@
 package com.sebastianpakiela.githubexplorer.feature.details
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.lifecycle.Observer
 import com.sebastianpakiela.githubexplorer.domain.entity.Commit
 import com.sebastianpakiela.githubexplorer.domain.entity.RepoCommitList
 import com.sebastianpakiela.githubexplorer.domain.usecase.CommitToShareTextUseCase
-import com.sebastianpakiela.githubexplorer.rule.RxImmediateSchedulerRule
-import io.reactivex.rxjava3.core.Single
+import com.sebastianpakiela.githubexplorer.rule.TestCoroutineRule
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import org.hamcrest.CoreMatchers.*
+import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -14,15 +18,14 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DetailsViewModelTest {
 
-    @Rule
-    @JvmField
-    var testSchedulerRule = RxImmediateSchedulerRule()
+    @get:Rule
+    val testSchedulerRule = TestCoroutineRule()
 
-    @Rule
-    @JvmField
-    var instantTaskExecutorRule = InstantTaskExecutorRule()
+    @get:Rule
+    val instantTaskExecutorRule = InstantTaskExecutorRule()
 
     private val commitToShareTextUseCase: CommitToShareTextUseCase = mock()
 
@@ -34,7 +37,7 @@ class DetailsViewModelTest {
     }
 
     @Test
-    fun `Should emit event onShareClick`() {
+    fun `Should emit event onShareClick`() = runTest {
         val commit = Commit(
             sha = "sha1",
             date = "01:00:00 01.01.1970",
@@ -42,23 +45,22 @@ class DetailsViewModelTest {
             message = "message"
         )
         val output = "Output"
-        val observer: Observer<String> = mock()
-        whenever(commitToShareTextUseCase.execute(commit)).thenReturn(Single.just(output))
-        viewModel.shareCommitEvent.observeForever(observer)
+        whenever(commitToShareTextUseCase.execute(commit)).thenReturn(output)
 
         viewModel.onShareClick(commit)
+        advanceUntilIdle()
 
-        verify(observer).onChanged(output)
+        verify(commitToShareTextUseCase).execute(commit)
+        assertThat(viewModel.shareCommitEventFlow.first(), equalTo(output))
     }
 
     @Test
-    fun `Should init from object`() {
-        val observer: Observer<List<Commit>> = mock()
-        viewModel.commitList.observeForever(observer)
+    fun `Should init from object`() = runTest {
         val input = emptyList<Commit>()
 
         viewModel.initFrom(RepoCommitList(input))
+        advanceUntilIdle()
 
-        verify(observer).onChanged(input)
+        assertThat(viewModel.commitListFlow.first(), equalTo(input))
     }
 }

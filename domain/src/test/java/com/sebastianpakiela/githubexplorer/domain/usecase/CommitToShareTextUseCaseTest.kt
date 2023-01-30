@@ -1,7 +1,7 @@
 package com.sebastianpakiela.githubexplorer.domain.usecase
 
 import com.sebastianpakiela.githubexplorer.domain.entity.Commit
-import com.sebastianpakiela.githubexplorer.domain.rule.RxImmediateSchedulerRule
+import com.sebastianpakiela.githubexplorer.domain.rule.TestCoroutineRule
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Before
@@ -10,9 +10,8 @@ import org.junit.Test
 
 class CommitToShareTextUseCaseTest {
 
-    @Rule
-    @JvmField
-    var testSchedulerRule = RxImmediateSchedulerRule()
+    @get:Rule
+    val testSchedulerRule = TestCoroutineRule()
 
     private lateinit var useCase: CommitToShareTextUseCase
 
@@ -26,13 +25,11 @@ class CommitToShareTextUseCaseTest {
         val commit = Commit(
             sha = "sha1", date = "01:00:00 01.01.1970", author = "author", message = "message"
         )
-        val observer = useCase.execute(commit).test()
+        val value = useCase.execute(commit)
 
-        observer.assertValueCount(1)
-        val firstValue = observer.values().first()
-        assertThat(firstValue, containsString(commit.sha))
-        assertThat(firstValue, containsString(commit.date))
-        assertThat(firstValue, containsString(commit.author))
-        assertThat(firstValue, containsString(commit.message))
+        assertThat(value, containsString(commit.sha))
+        assertThat(value, containsString(commit.date))
+        assertThat(value, containsString(commit.author))
+        assertThat(value, containsString(commit.message))
     }
 }
