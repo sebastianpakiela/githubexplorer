@@ -4,8 +4,8 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.room.*
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sebastianpakiela.githubexplorer.data.entity.db.RecentlyViewedRepositoryEntity
-import com.sebastianpakiela.githubexplorer.data.rule.TestCoroutineRule
-import com.sebastianpakiela.githubexplorer.data.rule.testCollect
+import com.sebastianpakiela.basetest.rule.TestCoroutineRule
+import com.sebastianpakiela.basetest.rule.testCollect
 import com.sebastianpakiela.githubexplorer.data.testdata.TestData
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.FlowCollector

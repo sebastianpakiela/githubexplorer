@@ -3,7 +3,7 @@ package com.sebastianpakiela.githubexplorer.data.repository
 import com.sebastianpakiela.githubexplorer.data.api.NetworkApiService
 import com.sebastianpakiela.githubexplorer.data.db.CommitDao
 import com.sebastianpakiela.githubexplorer.data.db.RecentlyViewedRepositoryDao
-import com.sebastianpakiela.githubexplorer.data.rule.TestCoroutineRule
+import com.sebastianpakiela.basetest.rule.TestCoroutineRule
 import com.sebastianpakiela.githubexplorer.data.testdata.TestData
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.runTest

@@ -1,4 +1,4 @@
-package com.sebastianpakiela.githubexplorer.data.rule
+package com.sebastianpakiela.basetest.rule
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
