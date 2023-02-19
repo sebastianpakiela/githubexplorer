@@ -47,10 +47,10 @@ class SearchFragment : BaseFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.searchCta.setOnClickListener {
-            viewModel.queryRepository(binding.searchInput.text.toString())
+            viewModel.dispatchAction(ValidateInput(binding.searchInput.text.toString()))
         }
         recentlyViewedReposAdapter = RecentlyViewedReposAdapter {
-            viewModel.queryRepository(it)
+            viewModel.dispatchAction(ValidateInput(it))
         }
         binding.recentlyViewedRecyclerView.adapter = recentlyViewedReposAdapter
 

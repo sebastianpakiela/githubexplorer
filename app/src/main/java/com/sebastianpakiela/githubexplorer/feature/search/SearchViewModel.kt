@@ -1,70 +1,123 @@
 package com.sebastianpakiela.githubexplorer.feature.search
 
 import android.util.Log
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.sebastianpakiela.githubexplorer.domain.entity.RepoCommitList
+import com.sebastianpakiela.githubexplorer.base.ViewStateViewModel
 import com.sebastianpakiela.githubexplorer.domain.usecase.GetRecentlyViewedRepositoriesUseCase
 import com.sebastianpakiela.githubexplorer.domain.usecase.GetRepositoryDataUseCase
 import com.sebastianpakiela.githubexplorer.domain.usecase.UserAndRepoValidationStatus
 import com.sebastianpakiela.githubexplorer.domain.usecase.ValidateRepositoryAndUserUseCase
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import javax.inject.Inject
 
 class SearchViewModel @Inject constructor(
-    getRecentlyViewedRepositoriesUseCase: GetRecentlyViewedRepositoriesUseCase,
+    private val getRecentlyViewedRepositoriesUseCase: GetRecentlyViewedRepositoriesUseCase,
     private val getRepositoryDataUseCase: GetRepositoryDataUseCase,
     private val validateRepositoryAndUserUseCase: ValidateRepositoryAndUserUseCase
-) : ViewModel() {
+) : ViewStateViewModel<SearchViewState, SearchAction, SearchEffect>() {
 
-    private val _loadingFlow = MutableStateFlow(false)
-    val loadingFlow: StateFlow<Boolean> = _loadingFlow
+//    private val _errorFlow = MutableStateFlow(UserAndRepoValidationStatus.CORRECT)
+//    val errorFlow: StateFlow<UserAndRepoValidationStatus> = _errorFlow
+//
+//    val recentlyViewedRepositoriesFlow: StateFlow<List<String>> =
+//        getRecentlyViewedRepositoriesUseCase.getRecentlyViewedRepositories()
+//            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
+//
+//    private val goToDetailsChannel: Channel<RepoCommitList> = Channel(Channel.BUFFERED)
+//    val goToDetailsFlow = goToDetailsChannel.receiveAsFlow()
+//
+//    private val goToErrorSnackBarChannel: Channel<Unit> = Channel(Channel.BUFFERED)
+//    val goToErrorSnackBarFlow = goToErrorSnackBarChannel.receiveAsFlow()
 
-    private val _errorFlow = MutableStateFlow(UserAndRepoValidationStatus.CORRECT)
-    val errorFlow: StateFlow<UserAndRepoValidationStatus> = _errorFlow
+    override fun getEmptyState(): SearchViewState {
+        return SearchViewState()
+    }
 
-    val recentlyViewedRepositoriesFlow: StateFlow<List<String>> =
-        getRecentlyViewedRepositoriesUseCase.getRecentlyViewedRepositories()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
+    init {
+        dispatchAction(LoadRecentlyViewedRepositories)
+    }
 
-    private val goToDetailsChannel: Channel<RepoCommitList> = Channel(Channel.BUFFERED)
-    val goToDetailsFlow = goToDetailsChannel.receiveAsFlow()
+    override fun reduceAction(
+        action: SearchAction,
+        currentState: SearchViewState
+    ): SearchViewState {
+        dispatchEvent(action)
 
-    private val goToErrorSnackBarChannel: Channel<Unit> = Channel(Channel.BUFFERED)
-    val goToErrorSnackBarFlow = goToErrorSnackBarChannel.receiveAsFlow()
+        return when (action) {
+            is RecentlyViewedRepositoriesReceived -> {
+                currentState.copy(
+                    loading = false,
+                    recentlyViewedRepositories = action.recentlyViewedRepositories
+                )
+            }
+            is LoadRecentlyViewedRepositories -> {
+                currentState.copy(loading = true)
+            }
+            is RepositoryDataReceived -> {
+                currentState.copy(loading = false)
+            }
+            is InputValidateResult -> currentState.copy(loading = action.success)
+            else -> SearchViewState()
+        }
+    }
 
-    fun queryRepository(userAndRepoInput: String) {
-        val userAndRepoInput = userAndRepoInput.trim()
+    override fun dispatchEvent(action: SearchAction) {
+        viewModelScope.launch {
+            when (action) {
+                is LoadRecentlyViewedRepositories -> queryRecentlyViewedRepositories()
+                is ValidateInput -> validateInput(action.input)
+                is InputValidateResult -> onInputValidateResult(
+                    action.validationStatus,
+                    action.input
+                )
+                is ShowSnackbarError -> _effect.send(ShowSnackbarEffect)
 
+                else -> {}
+            }
+        }
+    }
+
+    private fun validateInput(input: String) {
         viewModelScope.launch {
             val validationResult =
-                validateRepositoryAndUserUseCase.validateRepositoryAndUserInput(userAndRepoInput)
+                validateRepositoryAndUserUseCase.validateRepositoryAndUserInput(input)
 
-            _errorFlow.emit(validationResult)
-            if (validationResult != UserAndRepoValidationStatus.CORRECT) {
-                return@launch
-            }
+            val action = InputValidateResult(
+                validationResult == UserAndRepoValidationStatus.CORRECT,
+                validationResult,
+                input
+            )
+            dispatchAction(action)
+        }
+    }
 
-            getRepositoryDataUseCase
-                .getRepository(userAndRepoInput)
+    private fun onInputValidateResult(
+        validationStatus: UserAndRepoValidationStatus,
+        input: String
+    ) {
+        if (validationStatus != UserAndRepoValidationStatus.CORRECT) {
+            return
+        }
+
+        viewModelScope.launch {
+            getRepositoryDataUseCase.getRepository(input)
                 .catch { exc ->
                     if (exc is HttpException) {
-                        goToErrorSnackBarChannel.send(Unit)
+                        dispatchAction(ShowSnackbarError)
+                        Log.e("Error", exc.message, exc)
                     }
-                    Log.e("Error", exc.message, exc)
                 }
-                .onStart {
-                    _loadingFlow.emit(true)
-                }
-                .onCompletion {
-                    _loadingFlow.emit(false)
-                }
-                .collect { goToDetailsChannel.send(it) }
+                .collect { dispatchAction(RepositoryDataReceived(it)) }
+        }
+    }
+
+    private fun queryRecentlyViewedRepositories() {
+        viewModelScope.launch {
+            getRecentlyViewedRepositoriesUseCase
+                .getRecentlyViewedRepositories()
+                .collect { dispatchAction(RecentlyViewedRepositoriesReceived(it)) }
         }
     }
 }
